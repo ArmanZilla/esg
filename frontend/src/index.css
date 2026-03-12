@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+/* ─── Force full-width at every level ─────────── */
+html, body, #root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* ─── Design Tokens ───────────────────────────── */
+:root {
+  --color-primary: #2dd4bf;
+  --color-primary-dark: #14b8a6;
+  --color-accent: #818cf8;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #fb7185;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #020617;
+  color: #f1f5f9;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar ─────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* ─── Glass Card ────────────────────────────── */
+.glass-card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 1rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  min-width: 0;
+}
+.glass-card:hover {
+  border-color: rgba(45, 212, 191, 0.3);
+  box-shadow: 0 8px 32px rgba(45, 212, 191, 0.08);
+  transform: translateY(-2px);
+}
+
+/* ─── KPI Card ──────────────────────────────── */
+.kpi-card {
+  border-radius: 1rem;
+  padding: 1.75rem 2rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  min-width: 0;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 1rem 1rem 0 0;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.kpi-card-teal::before   { background: linear-gradient(90deg, #14b8a6, #2dd4bf); }
+.kpi-card-indigo::before { background: linear-gradient(90deg, #6366f1, #818cf8); }
+.kpi-card-amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.kpi-card-rose::before   { background: linear-gradient(90deg, #f43f5e, #fb7185); }
+.kpi-card-green::before  { background: linear-gradient(90deg, #10b981, #34d399); }
+
+/* ─── Animations ────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeUp 0.5s ease-out forwards; }
+
+/* ─── Buttons ───────────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, #14b8a6, #0d9488);
+  color: white;
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(20, 184, 166, 0.4);
+}
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-secondary {
+  background: transparent;
+  color: #2dd4bf;
+  padding: 0.625rem 1.25rem;
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-secondary:hover {
+  background: rgba(45, 212, 191, 0.08);
+  border-color: rgba(45, 212, 191, 0.5);
+}
+
+/* ─── Badges ────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-success { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+.badge-warning { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.badge-danger  { background: rgba(251, 113, 133, 0.15); color: #fb7185; }
+.badge-info    { background: rgba(129, 140, 248, 0.15); color: #a5b4fc; }
