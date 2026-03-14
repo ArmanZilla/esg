@@ -2,17 +2,6 @@
 
 A full-stack web dashboard for university social KPIs with real-time updates from Excel uploads.
 
-## Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React + TypeScript + TailwindCSS + Recharts |
-| Backend | FastAPI (Python) + SQLAlchemy |
-| Database | SQLite (MVP) |
-| Excel | pandas + openpyxl |
-| Auth | JWT (admin from env vars) |
-| Real-time | SSE + polling fallback |
-| Deploy | Docker + docker-compose |
 
 ## Quick Start
 
