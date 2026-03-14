@@ -26,7 +26,6 @@ cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
-API docs: http://localhost:8000/docs
 
 ### Frontend
 ```bash
@@ -34,22 +33,9 @@ cd frontend
 npm install
 npm run dev
 ```
-Dashboard: http://localhost:5173
 
-### Docker (production)
-```bash
-docker-compose up --build
-```
-Frontend: http://localhost:3000 | Backend: http://localhost:8000
 
-## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ADMIN_USER` | `admin` | Admin username |
-| `ADMIN_PASSWORD` | `changeme123` | Admin password |
-| `SECRET_KEY` | `super-secret-...` | JWT signing key |
-| `DATABASE_URL` | `sqlite:///./social_dashboard.db` | Database connection string |
 
 ## Excel Template
 
@@ -63,38 +49,31 @@ Download from Admin Panel or use `sample.xlsx`. Workbook sheets:
 | volunteering | year, faculty, volunteers_students, volunteers_staff, total_hours, projects_count | top_direction |
 | esg_courses | year, faculty, courses_count | esg_students_pct, green_program_students |
 
-## Usage
-
-1. Start backend and frontend
-2. Go to `/admin` → login (admin / changeme123)
-3. Upload `sample.xlsx` → review validation → click **Publish**
-4. Public dashboard at `/dashboard` updates automatically
-
 ## Project Structure
 
 ```
 ├── backend/
-│   ├── main.py              # FastAPI entry point
-│   ├── config.py            # Environment config
-│   ├── database.py          # SQLAlchemy setup
-│   ├── models.py            # ORM models
-│   ├── auth.py              # JWT auth
-│   ├── excel_parser.py      # Excel validation
-│   ├── template_generator.py # Template .xlsx builder
-│   ├── events.py            # SSE event manager
-│   ├── generate_sample.py   # Demo data generator
-│   ├── sample.xlsx          # Demo dataset
+│   ├── main.py              
+│   ├── config.py         
+│   ├── database.py          
+│   ├── models.py            
+│   ├── auth.py              
+│   ├── excel_parser.py      
+│   ├── template_generator.py 
+│   ├── events.py            
+│   ├── generate_sample.py   
+│   ├── sample.xlsx          
 │   └── routers/
-│       ├── admin.py         # Admin endpoints
-│       ├── public.py        # Public API
-│       └── realtime.py      # SSE endpoint
+│       ├── admin.py         
+│       ├── public.py        
+│       └── realtime.py      
 ├── frontend/
 │   └── src/
-│       ├── api.ts           # API client
-│       ├── context/         # FilterContext
-│       ├── hooks/           # useSSE
-│       ├── components/      # Layout, FilterBar, KpiCard, etc.
-│       └── pages/           # Dashboard + Admin pages
+│       ├── api.ts           
+│       ├── context/         
+│       ├── hooks/          
+│       ├── components/     
+│       └── pages/           
 ├── docker-compose.yml
 └── README.md
 ```
