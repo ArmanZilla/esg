@@ -1,3 +1,29 @@
+"""
+Database engine and session factory.
+
+Current backend: **SQLite** (file-based, persisted via Docker volume).
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  SQLite Limitations                                                  │
+│  ──────────────────────────────────────────────────────────────────── │
+│  • Single-writer: only one write transaction at a time.  WAL mode    │
+│    (enabled below) improves read concurrency but writes are still    │
+│    serialised.                                                       │
+│  • Not suitable for horizontal scaling — every replica would need    │
+│    its own copy of the database file.                                │
+│  • Best suited for MVP / small deployments with moderate traffic.    │
+│                                                                      │
+│  Migration path to PostgreSQL                                        │
+│  ──────────────────────────────────────────────────────────────────── │
+│  1. Change DATABASE_URL to a PostgreSQL DSN:                         │
+│       DATABASE_URL=postgresql://user:pass@host:5432/dbname           │
+│  2. Remove the `check_same_thread` connect arg (SQLite-only).        │
+│  3. Remove the SQLite PRAGMA listener.                               │
+│  4. Run `alembic upgrade head` (add Alembic for migrations).         │
+│  5. Add `psycopg2-binary` (or `asyncpg`) to requirements.txt.       │
+│  The SQLAlchemy ORM layer and all models remain unchanged.           │
+└──────────────────────────────────────────────────────────────────────┘
+"""
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from config import DATABASE_URL

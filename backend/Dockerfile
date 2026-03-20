@@ -17,23 +17,24 @@ WORKDIR /app
 # Copy pre-built dependencies from builder
 COPY --from=builder /install /usr/local
 
-# Copy application code
+# Copy application code (only what's needed)
 COPY main.py config.py database.py models.py auth.py events.py \
-     excel_parser.py template_generator.py generate_sample.py ./
+     excel_parser.py template_generator.py generate_sample.py \
+     rate_limit.py ./
 COPY routers/ ./routers/
+COPY entrypoint.sh ./
 
 # Create data directory for SQLite volume and set ownership
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+RUN chmod +x entrypoint.sh \
+    && mkdir -p /app/data \
+    && chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
 
 EXPOSE 8000
 
-# Use gunicorn with uvicorn workers for production.
-# WEB_CONCURRENCY env var controls worker count (default 2).
-CMD ["gunicorn", "main:app", \
-     "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--bind", "0.0.0.0:8000", \
-     "--workers", "2", \
-     "--access-logfile", "-"]
+# Default worker count — overridable via environment
+ENV WEB_CONCURRENCY=2
+
+ENTRYPOINT ["./entrypoint.sh"]

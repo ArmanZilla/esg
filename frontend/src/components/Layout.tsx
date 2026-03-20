@@ -2,7 +2,6 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSSE } from '../hooks/useSSE';
 import { FilterBar } from './FilterBar';
-import { LanguageSwitcher } from './LanguageSwitcher';
 
 export function Layout() {
     useSSE();

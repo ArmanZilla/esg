@@ -1,7 +1,8 @@
 services:
   backend:
     build: ./backend
-    env_file: .env
+    env_file:
+      - .env
     environment:
       - ADMIN_USER=${ADMIN_USER}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
@@ -12,12 +13,20 @@ services:
     volumes:
       - db-data:/app/data
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+    # Uncomment the following to expose the backend directly for debugging:
+    # ports:
+    #   - "8000:8000"
 
   frontend:
     build: ./frontend
@@ -27,8 +36,13 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1/health || exit 1" ]
       interval: 30s
       timeout: 5s
       retries: 3

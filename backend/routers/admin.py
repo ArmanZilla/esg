@@ -2,7 +2,7 @@
 Admin API router — login, upload, publish, rollback, template download.
 """
 import json
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -14,6 +14,7 @@ from models import Upload, Setting, GenderMetric, EngagementMetric, Volunteering
 from excel_parser import parse_and_validate
 from template_generator import generate_template
 from events import event_manager
+from rate_limit import login_rate_limit, record_failure, reset as reset_rate_limit
 import io
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -30,9 +31,13 @@ class LoginResponse(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
-def admin_login(req: LoginRequest):
+def admin_login(req: LoginRequest, request: Request, _rl=Depends(login_rate_limit)):
+    ip = request.client.host if request.client else "unknown"
     if req.username != ADMIN_USER or not verify_password(req.password):
+        record_failure(ip)
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    # Successful login — clear rate limit counter for this IP
+    reset_rate_limit(ip)
     token = create_access_token(data={"sub": req.username})
     return LoginResponse(access_token=token)
 
