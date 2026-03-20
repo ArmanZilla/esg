@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface DataTableProps {
     columns: { key: string; label: string }[];
@@ -7,6 +8,7 @@ interface DataTableProps {
 }
 
 export function DataTable({ columns, data, filename = 'export' }: DataTableProps) {
+    const { t } = useTranslation();
     const [sortKey, setSortKey] = useState<string | null>(null);
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -46,10 +48,10 @@ export function DataTable({ columns, data, filename = 'export' }: DataTableProps
         <div className="glass-card overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)]">
                 <span className="text-sm font-semibold text-[var(--color-text-muted)]">
-                    {data.length} record{data.length !== 1 ? 's' : ''}
+                    {data.length} {data.length !== 1 ? t('records') : t('record')}
                 </span>
                 <button onClick={exportCSV} className="btn-secondary text-xs py-1 px-3">
-                    📥 Export CSV
+                    📥 {t('export_csv')}
                 </button>
             </div>
             <div className="overflow-x-auto">
@@ -81,7 +83,7 @@ export function DataTable({ columns, data, filename = 'export' }: DataTableProps
                         {sorted.length === 0 && (
                             <tr>
                                 <td colSpan={columns.length} className="text-center py-8 text-[var(--color-text-muted)]">
-                                    No data available
+                                    {t('no_data_title')}
                                 </td>
                             </tr>
                         )}
