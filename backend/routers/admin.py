@@ -1,5 +1,11 @@
 """
 Admin API router — login, upload, publish, rollback, template download.
+
+Upload lifecycle states:
+    draft     → initial state after successful parse
+    published → the currently active dataset (only one at a time)
+    archived  → previously published, replaced by a newer publish
+    failed    → upload had validation errors; cannot be published
 """
 import json
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
@@ -9,7 +15,7 @@ from pydantic import BaseModel
 
 from database import get_db
 from auth import verify_password, create_access_token, get_current_admin
-from config import ADMIN_USER
+from config import ADMIN_USER, MAX_UPLOAD_SIZE
 from models import Upload, Setting, GenderMetric, EngagementMetric, VolunteeringMetric, EsgCoursesMetric
 from excel_parser import parse_and_validate
 from template_generator import generate_template
@@ -18,6 +24,14 @@ from rate_limit import login_rate_limit, record_failure, reset as reset_rate_lim
 import io
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+# Allowed MIME types for Excel uploads
+_EXCEL_MIMES = {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    # Some clients send generic octet-stream
+    "application/octet-stream",
+}
 
 
 class LoginRequest(BaseModel):
@@ -72,10 +86,23 @@ async def upload_excel(
     db: Session = Depends(get_db),
     admin: str = Depends(get_current_admin),
 ):
-    if not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(status_code=400, detail="Only .xlsx files are supported")
+    # ── Extension check ──────────────────────────────────────
+    if not file.filename or not file.filename.lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx / .xls files are supported")
 
+    # ── MIME type check ──────────────────────────────────────
+    if file.content_type and file.content_type not in _EXCEL_MIMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type: {file.content_type}. Expected an Excel spreadsheet.",
+        )
+
+    # ── Size check (backend guard, nginx also limits to 20M) ─
     contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        size_mb = MAX_UPLOAD_SIZE / (1024 * 1024)
+        raise HTTPException(status_code=413, detail=f"File too large. Maximum allowed size is {size_mb:.0f} MB.")
+
     result = parse_and_validate(contents)
 
     errors = result["errors"]
@@ -131,6 +158,28 @@ def _store_metrics(db: Session, upload_id: int, data: dict):
         db.add(EsgCoursesMetric(upload_id=upload_id, **row))
 
 
+def _set_active_upload(db: Session, upload_id: int):
+    """
+    Activate the given upload and archive the previously published one.
+    Ensures only one upload has status='published' at any time.
+    """
+    # Archive the current published upload (if any and if it's a different one)
+    prev_published = (
+        db.query(Upload)
+        .filter(Upload.status == "published", Upload.id != upload_id)
+        .all()
+    )
+    for prev in prev_published:
+        prev.status = "archived"
+
+    # Update the settings pointer
+    setting = db.query(Setting).filter(Setting.key == "active_upload_id").first()
+    if setting:
+        setting.value = str(upload_id)
+    else:
+        db.add(Setting(key="active_upload_id", value=str(upload_id)))
+
+
 @router.post("/publish/{upload_id}")
 async def publish_upload(
     upload_id: int,
@@ -143,14 +192,7 @@ async def publish_upload(
     if upload.status == "failed":
         raise HTTPException(status_code=400, detail="Cannot publish a failed upload")
 
-    # Set active
-    setting = db.query(Setting).filter(Setting.key == "active_upload_id").first()
-    if setting:
-        setting.value = str(upload_id)
-    else:
-        db.add(Setting(key="active_upload_id", value=str(upload_id)))
-
-    # Update status
+    _set_active_upload(db, upload_id)
     upload.status = "published"
     db.commit()
 
@@ -172,12 +214,7 @@ async def rollback_upload(
     if upload.status == "failed":
         raise HTTPException(status_code=400, detail="Cannot rollback to a failed upload")
 
-    setting = db.query(Setting).filter(Setting.key == "active_upload_id").first()
-    if setting:
-        setting.value = str(upload_id)
-    else:
-        db.add(Setting(key="active_upload_id", value=str(upload_id)))
-
+    _set_active_upload(db, upload_id)
     upload.status = "published"
     db.commit()
 

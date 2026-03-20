@@ -28,16 +28,24 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from config import DATABASE_URL
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
-    echo=False,
-)
+_is_sqlite = "sqlite" in DATABASE_URL
+
+# Build engine kwargs conditionally per backend
+_engine_kwargs: dict = {
+    "echo": False,
+}
+if _is_sqlite:
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    # For PostgreSQL / other network databases, verify connections before use
+    _engine_kwargs["pool_pre_ping"] = True
+
+engine = create_engine(DATABASE_URL, **_engine_kwargs)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Enable WAL mode for SQLite (better concurrency)
-if "sqlite" in DATABASE_URL:
+if _is_sqlite:
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()

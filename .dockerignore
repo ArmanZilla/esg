@@ -4,13 +4,13 @@
 
 # ─── Environment secrets ─────────────────────────────────────
 .env
-.env.local
-.env.example
+.env.*
 
 # ─── Python artifacts ────────────────────────────────────────
 backend/venv/
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
 # ─── Node artifacts ──────────────────────────────────────────
 frontend/node_modules/
@@ -21,11 +21,13 @@ frontend/dist/
 *.db-shm
 *.db-wal
 
-# ─── Logs / temp ─────────────────────────────────────────────
+# ─── Logs / temp / coverage ─────────────────────────────────
 *.log
 logs/
 *.bak
 *.tmp
+coverage/
+htmlcov/
 
 # ─── IDE ─────────────────────────────────────────────────────
 .vscode/

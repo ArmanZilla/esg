@@ -92,6 +92,8 @@ All variables are loaded from `.env` at the project root.
 | `DATABASE_URL` | No | `sqlite:///./data/social_dashboard.db` | SQLAlchemy database URL |
 | `ALLOWED_ORIGINS` | No | `http://localhost:3000` | Comma-separated CORS origins |
 | `WEB_CONCURRENCY` | No | `2` | Number of Gunicorn worker processes |
+| `DEBUG` | No | `false` | Set `true` to enable `/docs`, `/redoc`, `/openapi.json` |
+| `MAX_UPLOAD_SIZE` | No | `20971520` | Max upload size in bytes (20 MB) |
 
 See [`.env.example`](.env.example) for a template.
 
@@ -183,9 +185,13 @@ docker compose up -d
 |------|-----------|
 | Database | SQLite — single writer, no multi-instance scaling. Fine for MVP. |
 | Rate limiter | In-memory, per-worker. Not distributed across workers or replicas. |
+| SSE manager | In-memory, per-worker. Real-time events only reach clients connected to the same worker. |
 | Auth | Single admin user only (no multi-user RBAC). |
 | TLS | Not handled — deploy behind a TLS-terminating load balancer or use Cloudflare. |
 | Logs | Container logs only (json-file driver, 10 MB × 3 rotation). No external log aggregation. |
+| Docs | `/docs` and `/redoc` are disabled by default. Set `DEBUG=true` to enable. |
+
+> **Scaling note:** For multi-instance / horizontal scaling, migrate to PostgreSQL for the database and Redis for rate limiting + SSE pub/sub. The SQLAlchemy ORM layer and all models remain unchanged — only `DATABASE_URL` needs to change.
 
 ---
 
@@ -201,6 +207,8 @@ docker compose up -d
 - [ ] Set up TLS termination (reverse proxy, Cloudflare, etc.)
 - [ ] Set up a cron job or script for periodic SQLite backups
 - [ ] Review `WEB_CONCURRENCY` — set based on available CPU cores
+- [ ] Keep `DEBUG=false` in production (disables Swagger/ReDoc)
+- [ ] Verify CORS `ALLOWED_ORIGINS` matches your domain exactly
 
 ---
 

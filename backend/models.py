@@ -13,7 +13,7 @@ class Upload(Base):
     filename = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     created_by = Column(String(100), default="admin")
-    status = Column(String(20), default="draft")  # draft | published | failed
+    status = Column(String(20), default="draft")  # draft | published | archived | failed
     errors_count = Column(Integer, default=0)
     warnings_count = Column(Integer, default=0)
     error_details = Column(Text, default="[]")  # JSON string of errors/warnings
