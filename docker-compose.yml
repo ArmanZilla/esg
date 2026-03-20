@@ -1,24 +1,38 @@
-version: "3.9"
-
 services:
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    env_file: .env
     environment:
-      - ADMIN_USER=admin
-      - ADMIN_PASSWORD=changeme123
-      - SECRET_KEY=super-secret-key-change-in-production
-      - DATABASE_URL=sqlite:///./data/social_dashboard.db
+      - ADMIN_USER=${ADMIN_USER}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - WEB_CONCURRENCY=${WEB_CONCURRENCY:-2}
     volumes:
       - db-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build: ./frontend
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
 volumes:
   db-data:
