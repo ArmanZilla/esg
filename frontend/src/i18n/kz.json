@@ -176,5 +176,16 @@
   "kazakh": "Қазақ",
 
   "dataset_published": "#{{id}} жинағы жарияланды!",
-  "rolled_back_to": "#{{id}} жинағына кері қайтарылды"
+  "rolled_back_to": "#{{id}} жинағына кері қайтарылды",
+
+  "export": "Экспорт",
+  "export_png": "PNG ретінде экспорт",
+  "export_pdf": "Толық есеп (PDF)",
+  "exporting": "Экспорт...",
+  "report_title": "Әлеуметтік әсер ESG дашборд есебі",
+  "report_generated": "Жасалды",
+  "university": "Университет",
+  "metric": "Көрсеткіш",
+  "value": "Мәні",
+  "report_section_overview": "Негізгі көрсеткіштер"
 }

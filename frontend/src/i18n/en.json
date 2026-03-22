@@ -176,5 +176,16 @@
   "kazakh": "Kazakh",
 
   "dataset_published": "Dataset #{{id}} published!",
-  "rolled_back_to": "Rolled back to dataset #{{id}}"
+  "rolled_back_to": "Rolled back to dataset #{{id}}",
+
+  "export": "Export",
+  "export_png": "Export as PNG",
+  "export_pdf": "Export Full Report (PDF)",
+  "exporting": "Exporting...",
+  "report_title": "Social Impact ESG Dashboard Report",
+  "report_generated": "Generated",
+  "university": "University",
+  "metric": "Metric",
+  "value": "Value",
+  "report_section_overview": "Key Performance Indicators"
 }

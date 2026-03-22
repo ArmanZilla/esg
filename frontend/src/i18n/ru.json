@@ -176,5 +176,16 @@
   "kazakh": "Казахский",
 
   "dataset_published": "Набор #{{id}} опубликован!",
-  "rolled_back_to": "Откат к набору #{{id}}"
+  "rolled_back_to": "Откат к набору #{{id}}",
+
+  "export": "Экспорт",
+  "export_png": "Экспорт в PNG",
+  "export_pdf": "Полный отчёт (PDF)",
+  "exporting": "Экспорт...",
+  "report_title": "Отчёт ESG дашборда социального воздействия",
+  "report_generated": "Сгенерировано",
+  "university": "Университет",
+  "metric": "Метрика",
+  "value": "Значение",
+  "report_section_overview": "Ключевые показатели"
 }

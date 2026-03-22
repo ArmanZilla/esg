@@ -22,7 +22,7 @@ export function Layout() {
             <aside style={{ width: '288px', flexShrink: 0 }} className="bg-slate-900 border-r border-slate-800 hidden lg:flex lg:flex-col sticky top-0 h-screen overflow-y-auto">
                 {/* Brand */}
                 <div className="px-6 pt-7 pb-6">
-                    <div className="flex-item-3">
+                    <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-lg shadow-lg shadow-teal-500/25">
                             🏛️
                         </div>
@@ -42,7 +42,7 @@ export function Layout() {
                             to={n.to}
                             end={n.to === '/dashboard'}
                             className={({ isActive }) =>
-                                `flex-item-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
+                                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
                                     ? 'bg-teal-500/15 text-teal-300 border border-teal-500/20'
                                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                                 }`
@@ -58,7 +58,7 @@ export function Layout() {
                     <NavLink
                         to="/admin"
                         className={({ isActive }) =>
-                            `flex-item-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
+                            `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
                                 ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/20'
                                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                             }`
@@ -68,6 +68,14 @@ export function Layout() {
                         <span>{t('admin_panel')}</span>
                     </NavLink>
                 </nav>
+
+                {/* Sidebar footer */}
+                <div className="px-6 py-4 border-t border-slate-800/60">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">ESG Analytics v2.0</span>
+                    </div>
+                </div>
             </aside>
 
             {/* ── Main ── */}

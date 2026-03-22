@@ -1,20 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useFilters } from '../context/FilterContext';
+import { useExport } from '../context/ExportContext';
 import { api } from '../api';
 import { KpiCard } from '../components/KpiCard';
 import { ChartCard } from '../components/ChartCard';
+import { PageSkeleton } from '../components/SkeletonLoader';
+import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportUtils';
 
 const COLORS = ['#14b8a6', '#6366f1', '#f59e0b', '#ef4444', '#22c55e'];
-
-const TOOLTIP_STYLE = { background: '#114190ff', border: '1px solid #334155', borderRadius: 12, color: '#f1f5f9' };
+const TOOLTIP_STYLE = { background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, color: '#f1f5f9' };
 
 export function DashboardOverview() {
     const { t } = useTranslation();
     const { selectedYear, selectedFaculty, refreshVersion } = useFilters();
+    const { registerHandlers, clearHandlers } = useExport();
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    const chartRef1 = useRef<HTMLDivElement>(null);
+    const chartRef2 = useRef<HTMLDivElement>(null);
+    const pageRef = useRef<HTMLDivElement>(null);
+
+    // Keep latest values in refs so export callbacks are always stable
+    const stateRef = useRef({ summary, selectedYear, selectedFaculty, t });
+    stateRef.current = { summary, selectedYear, selectedFaculty, t };
 
     useEffect(() => {
         setLoading(true);
@@ -24,14 +35,55 @@ export function DashboardOverview() {
             .finally(() => setLoading(false));
     }, [selectedYear, selectedFaculty, refreshVersion]);
 
-    if (loading) return (
-        <div className="flex items-center justify-center h-64">
-            <div className="flex items-center gap-3 text-teal-400">
-                <div className="w-5 h-5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-lg font-medium">{t('loading_dashboard')}</span>
-            </div>
-        </div>
-    );
+    // Register export handlers ONCE on mount, clear on unmount
+    useEffect(() => {
+        registerHandlers({
+            csv: () => {
+                const { summary: s, selectedYear: yr, t: tr } = stateRef.current;
+                if (!s) return;
+                const cols = [
+                    { key: 'metric', label: tr('metric') },
+                    { key: 'value', label: tr('value') },
+                ];
+                const rows = [
+                    { metric: tr('kpi_female_representation'), value: `${s.gender.avg_female_pct}%` },
+                    { metric: tr('kpi_satisfaction'), value: `${s.engagement.avg_satisfaction_pct}%` },
+                    { metric: tr('kpi_volunteers'), value: s.volunteering.total_volunteers },
+                    { metric: tr('kpi_esg_courses'), value: s.esg_courses.total_courses },
+                ];
+                exportToCSV(cols, rows, `overview-${yr || 'all'}`);
+            },
+            png: async () => {
+                if (!pageRef.current) return;
+                await exportToPNG(pageRef.current, `dashboard-overview-${stateRef.current.selectedYear || 'all'}.png`);
+            },
+            pdf: async () => {
+                const { summary: s, selectedYear: yr, selectedFaculty: fac, t: tr } = stateRef.current;
+                if (!s) return;
+                const sections: { title: string; element: HTMLElement }[] = [];
+                if (chartRef1.current) sections.push({ title: tr('chart_gender_distribution'), element: chartRef1.current });
+                if (chartRef2.current) sections.push({ title: tr('chart_key_metrics'), element: chartRef2.current });
+                await exportToPDF({
+                    title: tr('report_title'),
+                    subtitle: tr('dashboard_description'),
+                    year: yr,
+                    faculty: fac,
+                    generatedAt: new Date().toLocaleString(),
+                    kpis: [
+                        { label: tr('kpi_female_representation'), value: `${s.gender.avg_female_pct}%` },
+                        { label: tr('kpi_satisfaction'), value: `${s.engagement.avg_satisfaction_pct}%` },
+                        { label: tr('kpi_volunteers'), value: String(s.volunteering.total_volunteers) },
+                        { label: tr('kpi_esg_courses'), value: String(s.esg_courses.total_courses) },
+                    ],
+                    sections,
+                    t: tr,
+                });
+            },
+        });
+        return () => clearHandlers();
+    }, [registerHandlers, clearHandlers]);
+
+    if (loading) return <PageSkeleton />;
 
     if (!summary || (!summary.gender?.records && !summary.engagement?.records))
         return (
@@ -54,44 +106,21 @@ export function DashboardOverview() {
     ];
 
     return (
-        <div className="w-full space-y-8">
-            {/* Header */}
+        <div ref={pageRef} className="w-full min-w-0 space-y-8">
             <div>
-                <h2 className="text-2xl font-semibold text-white">{t('dashboard_overview')}</h2>
+                <h2 className="text-3xl font-bold text-white">{t('dashboard_overview')}</h2>
                 <p className="text-sm text-slate-400 mt-1">{t('dashboard_description')}</p>
             </div>
 
-            {/* KPI Cards — 12-col grid: 4 cards each taking 3 cols on xl */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 w-full">
-                <KpiCard
-                    title={t('kpi_female_representation')}
-                    value={`${summary.gender.avg_female_pct}%`}
-                    subtitle={`${summary.gender.records} ${t('records')}`}
-                    icon="⚖️" color="teal" delay={0}
-                />
-                <KpiCard
-                    title={t('kpi_satisfaction')}
-                    value={`${summary.engagement.avg_satisfaction_pct}%`}
-                    subtitle={summary.engagement.avg_nps != null ? `NPS: ${summary.engagement.avg_nps}` : undefined}
-                    icon="😊" color="indigo" delay={100}
-                />
-                <KpiCard
-                    title={t('kpi_volunteers')}
-                    value={summary.volunteering.total_volunteers.toLocaleString()}
-                    subtitle={`${summary.volunteering.total_hours.toLocaleString()} ${t('hours')}`}
-                    icon="🤲" color="green" delay={200}
-                />
-                <KpiCard
-                    title={t('kpi_esg_courses')}
-                    value={summary.esg_courses.total_courses}
-                    subtitle={summary.esg_courses.avg_esg_students_pct != null ? `${summary.esg_courses.avg_esg_students_pct}% ${t('coverage')}` : undefined}
-                    icon="📚" color="amber" delay={300}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 w-full min-w-0">
+                <KpiCard title={t('kpi_female_representation')} value={`${summary.gender.avg_female_pct}%`} subtitle={`${summary.gender.records} ${t('records')}`} icon="⚖️" color="teal" delay={0} />
+                <KpiCard title={t('kpi_satisfaction')} value={`${summary.engagement.avg_satisfaction_pct}%`} subtitle={summary.engagement.avg_nps != null ? `NPS: ${summary.engagement.avg_nps}` : undefined} icon="😊" color="indigo" delay={100} />
+                <KpiCard title={t('kpi_volunteers')} value={summary.volunteering.total_volunteers.toLocaleString()} subtitle={`${summary.volunteering.total_hours.toLocaleString()} ${t('hours')}`} icon="🤲" color="green" delay={200} />
+                <KpiCard title={t('kpi_esg_courses')} value={summary.esg_courses.total_courses} subtitle={summary.esg_courses.avg_esg_students_pct != null ? `${summary.esg_courses.avg_esg_students_pct}% ${t('coverage')}` : undefined} icon="📚" color="amber" delay={300} />
             </div>
 
-            {/* Charts — 2-col on large screens, full width */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 w-full">
-                <ChartCard title={t('chart_gender_distribution')}>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full min-w-0 overflow-hidden">
+                <ChartCard ref={chartRef1} title={t('chart_gender_distribution')} exportFilename="gender-distribution">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie data={genderChartData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} dataKey="value" label={({ name, value }) => `${name}: ${value}%`}>
@@ -103,7 +132,7 @@ export function DashboardOverview() {
                     </ResponsiveContainer>
                 </ChartCard>
 
-                <ChartCard title={t('chart_key_metrics')}>
+                <ChartCard ref={chartRef2} title={t('chart_key_metrics')} exportFilename="key-metrics">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={overviewBars} layout="vertical">
                             <XAxis type="number" domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={{ stroke: '#334155' }} />

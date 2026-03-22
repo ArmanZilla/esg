@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useFilters } from '../context/FilterContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ExportDropdown } from './ExportDropdown';
 
 export function FilterBar() {
     const { t } = useTranslation();
@@ -26,6 +27,7 @@ export function FilterBar() {
                 {faculties.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
             <div className="flex-1" />
+            <ExportDropdown />
             <LanguageSwitcher />
         </div>
     );
