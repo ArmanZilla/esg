@@ -187,5 +187,6 @@
   "university": "Университет",
   "metric": "Көрсеткіш",
   "value": "Мәні",
-  "report_section_overview": "Негізгі көрсеткіштер"
+  "report_section_overview": "Негізгі көрсеткіштер",
+  "chart_unavailable": "Диаграмманы көрсету мүмкін болмады"
 }

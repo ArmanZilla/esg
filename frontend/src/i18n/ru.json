@@ -187,5 +187,6 @@
   "university": "Университет",
   "metric": "Метрика",
   "value": "Значение",
-  "report_section_overview": "Ключевые показатели"
+  "report_section_overview": "Ключевые показатели",
+  "chart_unavailable": "Диаграмма не может быть отображена"
 }

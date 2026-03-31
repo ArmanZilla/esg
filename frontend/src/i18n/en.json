@@ -187,5 +187,6 @@
   "university": "University",
   "metric": "Metric",
   "value": "Value",
-  "report_section_overview": "Key Performance Indicators"
+  "report_section_overview": "Key Performance Indicators",
+  "chart_unavailable": "Chart could not be rendered"
 }

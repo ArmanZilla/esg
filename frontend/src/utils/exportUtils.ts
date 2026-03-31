@@ -1,6 +1,7 @@
 import { toPng } from 'html-to-image';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { encode as arrayBufferToBase64 } from 'base64-arraybuffer';
 
 /* ─── CSV Export ────────────────────────────────────── */
 
@@ -48,6 +49,122 @@ export async function exportToPNG(
   link.click();
 }
 
+/* ─── Font Loading ──────────────────────────────────── */
+
+let _fontBase64Cache: string | null = null;
+
+/**
+ * Fetch Inter.ttf from /fonts/ and return base64 string.
+ * Caches after first call for performance.
+ */
+async function loadInterFontBase64(): Promise<string> {
+  if (_fontBase64Cache) return _fontBase64Cache;
+
+  const response = await fetch('/fonts/Inter.ttf');
+  if (!response.ok) {
+    throw new Error(`Failed to load font: ${response.status} ${response.statusText}`);
+  }
+  const buffer = await response.arrayBuffer();
+  _fontBase64Cache = arrayBufferToBase64(buffer);
+  return _fontBase64Cache;
+}
+
+/**
+ * Register the Inter font into a jsPDF instance.
+ */
+async function registerInterFont(pdf: jsPDF): Promise<void> {
+  const base64 = await loadInterFontBase64();
+
+  pdf.addFileToVFS('Inter-Regular.ttf', base64);
+  pdf.addFont('Inter-Regular.ttf', 'Inter', 'normal', undefined, 'Identity-H');
+}
+
+/**
+ * Set the Inter font on the PDF (must be registered first).
+ */
+function useInterFont(pdf: jsPDF, style: 'normal' | 'bold' = 'normal', size = 12) {
+  // jsPDF doesn't distinguish bold if we only have one weight registered,
+  // so we always use 'normal' style but adjust size for emphasis.
+  pdf.setFont('Inter', style);
+  pdf.setFontSize(size);
+}
+
+/* ─── Chart Capture ─────────────────────────────────── */
+
+/**
+ * Wait for next animation frame + a short delay to ensure
+ * all charts have finished their render cycle.
+ */
+function waitForRender(ms = 100): Promise<void> {
+  return new Promise(resolve => {
+    requestAnimationFrame(() => {
+      setTimeout(resolve, ms);
+    });
+  });
+}
+
+/**
+ * Validate that a DOM element is suitable for capture.
+ */
+function isElementCapturable(el: HTMLElement): boolean {
+  if (!el) return false;
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+/**
+ * Capture a DOM element as a PNG data URL using html2canvas.
+ * Retries once on failure after waiting for a re-render.
+ */
+async function captureElementAsImage(
+  el: HTMLElement,
+  sectionTitle: string,
+): Promise<string | null> {
+  // First attempt
+  const result = await _tryCapture(el, sectionTitle, 1);
+  if (result) return result;
+
+  // Retry after waiting for render
+  console.warn(`[PDF Export] Retry capture for "${sectionTitle}" after waiting…`);
+  await waitForRender(300);
+  return _tryCapture(el, sectionTitle, 2);
+}
+
+async function _tryCapture(
+  el: HTMLElement,
+  sectionTitle: string,
+  attempt: number,
+): Promise<string | null> {
+  if (!isElementCapturable(el)) {
+    console.warn(
+      `[PDF Export] Element for "${sectionTitle}" has zero dimensions (attempt ${attempt}). Skipping capture.`,
+    );
+    return null;
+  }
+
+  try {
+    const canvas = await html2canvas(el, {
+      backgroundColor: '#0f172a',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      removeContainer: true,
+      allowTaint: true,
+    });
+
+    // Validate the resulting canvas
+    if (canvas.width === 0 || canvas.height === 0) {
+      console.warn(`[PDF Export] Canvas for "${sectionTitle}" is empty (attempt ${attempt}).`);
+      return null;
+    }
+
+    return canvas.toDataURL('image/png');
+  } catch (err) {
+    console.error(`[PDF Export] html2canvas failed for "${sectionTitle}" (attempt ${attempt}):`, err);
+    return null;
+  }
+}
+
 /* ─── PDF Export (structured, multi-page) ───────────── */
 
 export interface PDFMetadata {
@@ -69,6 +186,26 @@ export async function exportToPDF(meta: PDFMetadata): Promise<void> {
   const margin = 15;
   const contentW = W - margin * 2;
 
+  // ── Register and activate Inter font for Unicode support ──
+  try {
+    await registerInterFont(pdf);
+  } catch (err) {
+    console.error('[PDF Export] Failed to load Inter font, falling back to Helvetica:', err);
+    // If font loading fails, we still proceed but Cyrillic may not render
+  }
+
+  // Wait for charts to fully render before capturing
+  await waitForRender(200);
+
+  /* ── Pre-capture all chart sections ─────── */
+  // Capture charts BEFORE generating PDF pages to ensure DOM is stable
+  const capturedSections: { title: string; imageData: string | null }[] = [];
+
+  for (const section of meta.sections) {
+    const imageData = await captureElementAsImage(section.element, section.title);
+    capturedSections.push({ title: section.title, imageData });
+  }
+
   /* ── Title Page ────────────────────── */
   // Dark background
   pdf.setFillColor(2, 6, 23); // #020617
@@ -79,21 +216,20 @@ export async function exportToPDF(meta: PDFMetadata): Promise<void> {
   pdf.rect(0, 0, W, 4, 'F');
 
   // Title
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(28);
+  useInterFont(pdf, 'normal', 28);
   pdf.setTextColor(241, 245, 249); // slate-100
   pdf.text(meta.title, margin, 50);
 
   if (meta.subtitle) {
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(12);
+    useInterFont(pdf, 'normal', 12);
     pdf.setTextColor(148, 163, 184); // slate-400
-    pdf.text(meta.subtitle, margin, 62);
+    const subtitleLines = pdf.splitTextToSize(meta.subtitle, contentW);
+    pdf.text(subtitleLines, margin, 62);
   }
 
   // Metadata block
   let metaY = 85;
-  pdf.setFontSize(10);
+  useInterFont(pdf, 'normal', 10);
   pdf.setTextColor(148, 163, 184);
 
   const metaLines: string[] = [];
@@ -116,8 +252,7 @@ export async function exportToPDF(meta: PDFMetadata): Promise<void> {
 
   /* ── KPI Summary Table ─────────────── */
   if (meta.kpis.length > 0) {
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(14);
+    useInterFont(pdf, 'normal', 14);
     pdf.setTextColor(241, 245, 249);
     pdf.text(meta.t('report_section_overview'), margin, metaY);
     metaY += 10;
@@ -136,13 +271,11 @@ export async function exportToPDF(meta: PDFMetadata): Promise<void> {
       pdf.setFillColor(15, 23, 42); // slate-900
       pdf.roundedRect(x, y - 5, colW - 4, rowH - 1, 2, 2, 'F');
 
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(8);
+      useInterFont(pdf, 'normal', 8);
       pdf.setTextColor(148, 163, 184);
       pdf.text(kpi.label, x + 3, y);
 
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(11);
+      useInterFont(pdf, 'normal', 11);
       pdf.setTextColor(45, 212, 191);
       pdf.text(kpi.value, x + colW - 8, y, { align: 'right' });
     }
@@ -150,7 +283,7 @@ export async function exportToPDF(meta: PDFMetadata): Promise<void> {
   }
 
   /* ── Chart Sections (each on new page) ── */
-  for (const section of meta.sections) {
+  for (const section of capturedSections) {
     pdf.addPage();
 
     // Dark background
@@ -162,32 +295,31 @@ export async function exportToPDF(meta: PDFMetadata): Promise<void> {
     pdf.rect(0, 0, W, 2, 'F');
 
     // Section title
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(16);
+    useInterFont(pdf, 'normal', 16);
     pdf.setTextColor(241, 245, 249);
     pdf.text(section.title, margin, 20);
 
-    // Capture chart as image — use html2canvas for reliable rendering
-    try {
-      const canvas = await html2canvas(section.element, {
-        backgroundColor: '#0f172a',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        removeContainer: true,
-      });
+    if (section.imageData) {
+      // Calculate image dimensions to fit within page
+      try {
+        const imgProps = pdf.getImageProperties(section.imageData);
+        const imgW = contentW;
+        const imgH = (imgProps.height / imgProps.width) * imgW;
+        const maxH = H - 40; // leave room for header and footer
+        const finalH = Math.min(imgH, maxH);
 
-      const imgData = canvas.toDataURL('image/png');
-      const imgW = contentW;
-      const imgH = (canvas.height / canvas.width) * imgW;
-      const maxH = H - 40;
-      const finalH = Math.min(imgH, maxH);
-
-      pdf.addImage(imgData, 'PNG', margin, 28, imgW, finalH);
-    } catch {
-      pdf.setFontSize(10);
+        pdf.addImage(section.imageData, 'PNG', margin, 28, imgW, finalH);
+      } catch (err) {
+        console.error(`[PDF Export] Failed to add image for "${section.title}":`, err);
+        useInterFont(pdf, 'normal', 10);
+        pdf.setTextColor(148, 163, 184);
+        pdf.text(meta.t('chart_unavailable') || 'Chart could not be rendered.', margin, 35);
+      }
+    } else {
+      // Fallback: chart capture failed
+      useInterFont(pdf, 'normal', 10);
       pdf.setTextColor(148, 163, 184);
-      pdf.text('Chart could not be rendered.', margin, 35);
+      pdf.text(meta.t('chart_unavailable') || 'Chart could not be rendered.', margin, 35);
     }
   }
 
@@ -195,7 +327,7 @@ export async function exportToPDF(meta: PDFMetadata): Promise<void> {
   const totalPages = pdf.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);
-    pdf.setFontSize(8);
+    useInterFont(pdf, 'normal', 8);
     pdf.setTextColor(100, 116, 139); // slate-500
     pdf.text(meta.title, margin, H - 8);
     pdf.text(`${i} / ${totalPages}`, W - margin, H - 8, { align: 'right' });
